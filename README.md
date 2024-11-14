@@ -943,13 +943,13 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/246
     
 **Core problem**:
     
-    Interesting stuff, that could result in the sync failed during upgrades
+Interesting stuff, that could result in the sync failed during upgrades
     
-    Basically, the upgrades happen on l1 and l2. 
+Basically, the upgrades happen on l1 and l2. 
     
-    On l1, if no success → revert, and it is clear that update happens
+On l1, if no success → revert, and it is clear that update happens
     
-    On l2, it is done via the bootloader, and even if there is no success, it simply send the answer to the l1 that there is no success. However, on the L1 side, it does not care about the outcome of the L2 upgrade transaction on L2, it only cares about the execution of the L2 upgrade transaction, regardless of its success or failure.
+On l2, it is done via the bootloader, and even if there is no success, it simply send the answer to the l1 that there is no success. However, on the L1 side, it does not care about the outcome of the L2 upgrade transaction on L2, it only cares about the execution of the L2 upgrade transaction, regardless of its success or failure.
     
     So, the sync could fail. So l1 updated, but the l2 not
     
@@ -961,21 +961,21 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/246
     
 **Core problem**:
     
-    The zkSync implements the custom ecrecover precompile. It works differently compare to the L1. The bug is that if the the custom ecrecover will be used via the `delegateCall`, it can have significant impact leading to incorrect signature validation, potentially compromising data integrity and user funds.
+The zkSync implements the custom ecrecover precompile. It works differently compare to the L1. The bug is that if the the custom ecrecover will be used via the `delegateCall`, it can have significant impact leading to incorrect signature validation, potentially compromising data integrity and user funds.
     
-    In zkSync Era, when the ECRECOVER precompile contract is invoked using `delegatecall`, it diverges from the usual behavior by delegating the call to the contract itself and executing its code within the caller's context. This results in a returned value that does not align with the anticipated outcome of a `precompileCall`. Instead, it yields `bytes32(0)`.
+In zkSync Era, when the ECRECOVER precompile contract is invoked using `delegatecall`, it diverges from the usual behavior by delegating the call to the contract itself and executing its code within the caller's context. This results in a returned value that does not align with the anticipated outcome of a `precompileCall`. Instead, it yields `bytes32(0)`.
     
 **How to find it next time**:
     
-    Check the precompiled behaviour heavily from all of the edges.
+Check the precompiled behaviour heavily from all of the edges.
     
 # Issue explanation: **Discrepancy in Default Account Behavior**
     
-    https://github.com/code-423n4/2023-10-zksync-findings/issues/168
+https://github.com/code-423n4/2023-10-zksync-findings/issues/168
     
 **Core problem**:
     
-    The core goal of the Default Account is to simulate the logic of the EOA, however it is not always the case. If the custom account would delegate call to the custom account, it would revert, because the Default Account’s fallback function is inconsistent.
+The core goal of the Default Account is to simulate the logic of the EOA, however it is not always the case. If the custom account would delegate call to the custom account, it would revert, because the Default Account’s fallback function is inconsistent.
     
     ```solidity
     fallback() external payable {
@@ -990,33 +990,33 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/246
     }
     ```
     
-    So, because the msg.sender isn’t the bootloader, it would revert.
+So, because the msg.sender isn’t the bootloader, it would revert.
     
 **How to find it next time**:
     
-    It was interesting to discover that if do the delegate call, it would be forwarded into the fallback. But in the correct audit try to break the EOA invariant. Think in a way, at which edges it wouldn’t behave as an EOA. We need to revise the evm)
+It was interesting to discover that if do the delegate call, it would be forwarded into the fallback. But in the correct audit try to break the EOA invariant. Think in a way, at which edges it wouldn’t behave as an EOA. We need to revise the evm)
     
 # Issue explanation: **Divergences in the Simulation of the extcodehash EVM Opcode**
     
-    https://github.com/code-423n4/2023-10-zksync-findings/issues/133
+https://github.com/code-423n4/2023-10-zksync-findings/issues/133
     
 **Core problem**:
     
-    The vulnerability lies in the discrepancies between how zkSync Era emulates the `extcodehash` opcode compared to the Ethereum Virtual Machine (EVM) standard defined in EIP-1052. Specifically:
+The vulnerability lies in the discrepancies between how zkSync Era emulates the `extcodehash` opcode compared to the Ethereum Virtual Machine (EVM) standard defined in EIP-1052. Specifically:
     
     1. **Empty Account Handling**: According to EIP-161, an account is considered empty if it has no code, a zero nonce, and a zero balance. In the EVM, if an account is not empty (i.e., it has a balance but no code), the `extcodehash` should return `keccak256("")`. However, zkSync Era returns `bytes32(0)` for such accounts, ignoring the account's balance and only considering the code and nonce.
     2. **Precompile Contracts**: In the EVM, precompiled contracts (such as address `0x02` for SHA-256) have no code but a non-zero balance. The `extcodehash` for such contracts should return `keccak256("")`. In zkSync Era, this behavior is consistent but doesn't account for the balance. It returns `keccak256("")` based on whether the address is a precompile, disregarding balance entirely.
     
 ### Potential Impact:
     
-    - Developers relying on zkSync Era's emulation of `extcodehash` might encounter **unexpected behavior** in their smart contracts, especially when handling accounts or precompiled contracts with balances.
-    - This divergence could lead to **inconsistent contract logic** between zkSync Era and the EVM, affecting the security and reliability of contracts ported between platforms.
+- Developers relying on zkSync Era's emulation of `extcodehash` might encounter **unexpected behavior** in their smart contracts, especially when handling accounts or precompiled contracts with balances.
+- This divergence could lead to **inconsistent contract logic** between zkSync Era and the EVM, affecting the security and reliability of contracts ported between platforms.
     
-    The core issue is that zkSync Era's behavior does not fully align with the EVM's handling of account balance in the `extcodehash` operation, potentially causing security risks or logic errors in deployed contracts.
+The core issue is that zkSync Era's behavior does not fully align with the EVM's handling of account balance in the `extcodehash` operation, potentially causing security risks or logic errors in deployed contracts.
     
 **How to find it next time**:
     
-    Ensure that every precompile / opcode that is integrated/create by the zkSync is consisted with the actual logic, as at evm. Check every documentation of every precompile / opcode. Search for the most rare one, check my twitter handle once. 
+Ensure that every precompile / opcode that is integrated/create by the zkSync is consisted with the actual logic, as at evm. Check every documentation of every precompile / opcode. Search for the most rare one, check my twitter handle once. 
     
 # Issue explanation: **Nonce Behavior Discrepancy Between zkSync Era and EIP-161**
     
@@ -1026,29 +1026,29 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/246
     
     Th eip-161 refers to the State Trie Clearing, and it defines an "empty account" as an account that has:
     
-    - **No code** (i.e., the account is not a smart contract).
-    - **Nonce** of zero (i.e., the account has not initiated any transactions).
-    - **Balance** of zero (i.e., no Ether or tokens stored in the account)
+- **No code** (i.e., the account is not a smart contract).
+- **Nonce** of zero (i.e., the account has not initiated any transactions).
+- **Balance** of zero (i.e., no Ether or tokens stored in the account)
     
-    There is a discrepancy between ZkEvm and EVM. 
+There is a discrepancy between ZkEvm and EVM. 
     
-    - In **EVM**, when contracts are deployed, the deployment nonce for a new contract starts at **1**.
-    - In **zkSync Era**, the deployment nonce starts at **0**, which is a deviation from the EVM standard.
+- In **EVM**, when contracts are deployed, the deployment nonce for a new contract starts at **1**.
+- In **zkSync Era**, the deployment nonce starts at **0**, which is a deviation from the EVM standard.
     
 **Impact on Contract Address Predictions:**
     
-    - Contract factories or developers often rely on nonces to **predict the addresses** of child contracts before deployment.
-    - The different nonce starting points between zkSync Era and EVM can cause **incorrect address predictions**.
-    - This issue is particularly relevant for smart contracts that deploy other contracts, as their logic may assume a starting nonce of 1 (following EVM behavior).
+- Contract factories or developers often rely on nonces to **predict the addresses** of child contracts before deployment.
+- The different nonce starting points between zkSync Era and EVM can cause **incorrect address predictions**.
+- This issue is particularly relevant for smart contracts that deploy other contracts, as their logic may assume a starting nonce of 1 (following EVM behavior).
     
 **EIP-161 Reference:**
     
-    - EIP-161 specifies that the nonce should increment by **one** before the contract's initialization code is executed.
-    - zkSync Era, by starting the nonce at zero instead of one, violates this assumption, leading to unpredictable behavior in contract address generation.
+- EIP-161 specifies that the nonce should increment by **one** before the contract's initialization code is executed.
+- zkSync Era, by starting the nonce at zero instead of one, violates this assumption, leading to unpredictable behavior in contract address generation.
     
 **How to find it next time**:
     
-    It is a really nice one! The hole point about it, is to check the EIP’s heavily. Maybe there is some which are already added. So, check what updates where on Ethereum and how the Zk handles it. But overall check the discrepancies on the level on the EIPs(core level)
+It is a really nice one! The hole point about it, is to check the EIP’s heavily. Maybe there is some which are already added. So, check what updates where on Ethereum and how the Zk handles it. But overall check the discrepancies on the level on the EIPs(core level)
     
 # Issue explanation: **Deployment Nonce Does not Increment For a Reverted Child Contract**
     
@@ -1056,18 +1056,18 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/91
     
 **Core problem**:
     
-    In EVM, the **factory's nonce** is incremented **immediately** when a contract deployment begins, even if the deployment fails (i.e., if the child contract's constructor reverts). The nonce is **not rolled back** in case of failure, ensuring that future contract deployments are predictable
+In EVM, the **factory's nonce** is incremented **immediately** when a contract deployment begins, even if the deployment fails (i.e., if the child contract's constructor reverts). The nonce is **not rolled back** in case of failure, ensuring that future contract deployments are predictable
     
-    The failed contract creation returns `address(0)`, but the factory's nonce remains incremented, preventing issues with future deployments.
+The failed contract creation returns `address(0)`, but the factory's nonce remains incremented, preventing issues with future deployments.
     
 **zkSync Era Behavior:**
     
-    - In zkSync Era, the deployment nonce is incremented **only** during the deployment process, but if the child contract’s constructor reverts, the entire transaction is rolled back, including the **factory’s incremented nonce**.
-    - This rollback leads to a situation where the factory's nonce is **reset** after a failed contract creation, making it inconsistent with EVM behavior.
+- In zkSync Era, the deployment nonce is incremented **only** during the deployment process, but if the child contract’s constructor reverts, the entire transaction is rolled back, including the **factory’s incremented nonce**.
+- This rollback leads to a situation where the factory's nonce is **reset** after a failed contract creation, making it inconsistent with EVM behavior.
     
 **How to find it next time**:
     
-    Check the nonce behaviours. One more time, check the EIP’s
+Check the nonce behaviours. One more time, check the EIP’s
     
 # Issue explanation: **Potential Gas Manipulation via Bytecode Compression**
     
@@ -1075,19 +1075,19 @@ https://github.com/code-423n4/2023-10-zksync-findings/issues/71
     
 **Core problem**:
     
-    The issue here revolves around the exploitation of a **compression mechanism** in the zkSync system, which is designed to reduce gas costs for users when publishing data from Layer 2 (L2) to Layer 1 (L1). The bug allows a **malicious operator** to manipulate the compression method in a way that artificially inflates the length of the data (or "dictionary") being compressed. This leads to **higher gas costs** without providing any real benefit in terms of data efficiency or compression.
+The issue here revolves around the exploitation of a **compression mechanism** in the zkSync system, which is designed to reduce gas costs for users when publishing data from Layer 2 (L2) to Layer 1 (L1). The bug allows a **malicious operator** to manipulate the compression method in a way that artificially inflates the length of the data (or "dictionary") being compressed. This leads to **higher gas costs** without providing any real benefit in terms of data efficiency or compression.
     
 ### Key Concepts:
     
-    1. **Compression for Gas Efficiency**:
-        - When processing L2 transactions, zkSync compresses the data (such as `factoryDeps`) before sending it to L1. This compression reduces the gas fees users need to pay, as the cost is proportional to the length of the message transmitted to L1.
-    2. **Malicious Compression Manipulation**:
-        - In the normal case, compression reduces the data size by replacing repeated segments with shorter references. The compressed data includes a "dictionary" of unique segments and "encoded data" that refers to these dictionary segments.
-        - However, a **malicious operator** could manipulate the compression method to artificially extend the size of the dictionary by adding unnecessary data. This **inflated dictionary** would increase the gas fees users pay, as gas is determined by the length of the transmitted message, even if the extra dictionary data has no functional purpose.
+1. **Compression for Gas Efficiency**:
+- When processing L2 transactions, zkSync compresses the data (such as `factoryDeps`) before sending it to L1. This compression reduces the gas fees users need to pay, as the cost is proportional to the length of the message transmitted to L1.
+2. **Malicious Compression Manipulation**:
+- In the normal case, compression reduces the data size by replacing repeated segments with shorter references. The compressed data includes a "dictionary" of unique segments and "encoded data" that refers to these dictionary segments.
+- However, a **malicious operator** could manipulate the compression method to artificially extend the size of the dictionary by adding unnecessary data. This **inflated dictionary** would increase the gas fees users pay, as gas is determined by the length of the transmitted message, even if the extra dictionary data has no functional purpose.
     
-    **How to find it next time**:
-    
-    When i will explore the compression, check whether we could extra data, whether could some malicious data be intervened, e.t.c. 
+**How to find it next time**:
+
+When i will explore the compression, check whether we could extra data, whether could some malicious data be intervened, e.t.c. 
     
 # Issue explanation: **deploying contracts with forceDeployOnAddress will break contracts when callConstructor is false**
     
@@ -1120,11 +1120,11 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     
 **How to find it next time**:
     
-    Check the contract deployment logic heavily and ensure that all works fine. Check new EIP’s some edges with the self-destruct, e.t.c.
+Check the contract deployment logic heavily and ensure that all works fine. Check new EIP’s some edges with the self-destruct, e.t.c.
     
 # Issue explanation: **BlockTimestamp is inconsistent on ZKSync compare to EVM**
     
-    https://github.com/code-423n4/2023-03-zksync-findings/issues/70
+https://github.com/code-423n4/2023-03-zksync-findings/issues/70
     
 **Core problem**:
     
@@ -1141,7 +1141,7 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     ........
     ```
     
-    The bug highlights that **time-sensitive contracts** may not function as expected when deployed on zkSync, due to significant differences in how blocks are handled compared to Ethereum.
+The bug highlights that **time-sensitive contracts** may not function as expected when deployed on zkSync, due to significant differences in how blocks are handled compared to Ethereum.
     
     ### Summary:
     
@@ -1150,7 +1150,7 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     
 **How to find it next time**:
     
-    Check the block production code, and brainstorm what if, what if re-org? E.t.c?
+Check the block production code, and brainstorm what if, what if re-org? E.t.c?
     
 # Issue explanation: **Loosing funds in a loop during the force deployment**
     
@@ -1158,7 +1158,7 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     
 **Core problem**:
     
-    This bug describes a flaw in the **force deployment** process in the `ContractDeployer` contract, where funds can be unintentionally locked if a deployment fails, making them difficult to recover.
+This bug describes a flaw in the **force deployment** process in the `ContractDeployer` contract, where funds can be unintentionally locked if a deployment fails, making them difficult to recover.
     
 ### Summary:
     
@@ -1168,9 +1168,9 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     
 ### Impact:
     
-    The locked ETH can accumulate if deployments frequently fail, which could lead to significant losses. Additionally, there is no straightforward way to retrieve this ETH once it's stuck in the `ContractDeployer` contract.
+The locked ETH can accumulate if deployments frequently fail, which could lead to significant losses. Additionally, there is no straightforward way to retrieve this ETH once it's stuck in the `ContractDeployer` contract.
     
-    The bug is critical because it affects the system's ability to manage ETH properly during force deployment, potentially leading to financial and operational inefficiencies.
+The bug is critical because it affects the system's ability to manage ETH properly during force deployment, potentially leading to financial and operational inefficiencies.
     
     ```solidity
     function forceDeployOnAddresses(ForceDeployment[] calldata _deployments) external payable {
@@ -1194,4 +1194,4 @@ Here we have an issue. If we deploy the contract with the _deployment.callConstr
     
 **How to find it next time**:
     
-    Check the logic of the contract deployment. Check every EIP that was introduced since last audit. Check how does it align with the logic.
+Check the logic of the contract deployment. Check every EIP that was introduced since last audit. Check how does it align with the logic.
